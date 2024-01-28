@@ -1,3 +1,5 @@
+import json
+
 import pyautogui
 
 
@@ -149,10 +151,35 @@ class ScrollWheelClick(Mouse):
                         logScreenshot=self.logSS)
 
 
+class Scroll(Mouse):
+
+    def __init__(self, noOfscroll: float, x: int, y: int, logSS=False):
+        super().__init__()
+        self.x = x
+        self.y = y
+        self.clicks = noOfscroll
+        self.logSS = logSS
+
+    def Scroll(self):
+        pyautogui.scroll(clicks=self.clicks, x=self.x, y=self.y, logScreenshot=self.logSS)
+
+
 class MiddleClick(ScrollWheelClick):
 
     def __init__(self, X: int, Y: int, clicks: int, interval: float, duration: float):
         super().__init__(X, Y, clicks, interval, duration)
+
+
+class Region:
+
+    def __init__(self, fromx=0, fromy=0, tox=pyautogui.size().width, toy=pyautogui.size().height):
+        self.fromx = int(fromx)
+        self.fromy = int(fromy)
+        self.tox = int(tox)
+        self.toy = int(toy)
+
+    def __str__(self):
+        return json.dumps({"From X": self.fromx, "From Y": self.fromy, "To X": self.tox, "To Y": self.toy})
 
 
 class Locate(Mouse):
@@ -162,9 +189,15 @@ class Locate(Mouse):
         self.img = img
         self.grayscale = grayscale
         self.minSearchTime = minSearchTime
+        raise FutureWarning
 
     def Locate(self):
         return pyautogui.locateCenterOnScreen(self.img, grayscale=self.grayscale, minSearchTime=self.minSearchTime)
 
     def LocateOnScreen(self):
         return pyautogui.locateOnScreen(self.img, grayscale=self.grayscale, minSearchTime=self.minSearchTime)
+
+    def LocateAllOnScreen(self, regionSerach: Region):
+        return pyautogui.locateAllOnScreen(image=self.img, grayscale=self.grayscale,
+                                           region=(regionSerach.fromx, regionSerach.fromy, regionSerach.tox,
+                                                   regionSerach.toy))
