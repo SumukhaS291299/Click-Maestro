@@ -8,6 +8,8 @@ import pyautogui
 streamlit.title("Welcome to Low Code configurator")
 streamlit.header('Tasks', divider='rainbow')
 
+# TODO Remove Streamlit session state for task and create a pickle file for same :0
+
 
 def MoveMouse():
     streamlit.session_state["Active"] = True
@@ -43,7 +45,7 @@ with streamlit.container():
 
         else:
             with streamlit.status("No workflow yet...", expanded=True) as status:
-                status.write("Workflow will be created autmaticaly when you start a new task...")
+                status.write("Workflow will be created automatically when you start a new task...")
 
 TC1, TC2, TC3 = streamlit.columns(3)
 
@@ -62,6 +64,7 @@ if "WORKFLOW_" + WorkflowName + ".json" in dirFiles:
             workflowfromfile = json.load(f)
             getTaskListFromFile = workflowfromfile.get("Tasks")
             streamlit.session_state["Tasks"] = getTaskListFromFile
+            streamlit.toast(f"Loaded Your {WorkflowName} data")
 
 with TC1:
     if streamlit.button("Move Mouse", on_click=MoveMouse) or streamlit.session_state.get("Active"):
@@ -81,7 +84,16 @@ with Optcol1:
     if streamlit.button("Show Steps"):
         UpdateWorkflowDisplay()
 
-with Optcol2:
-    if streamlit.button("Save Workflow"):
+
+def ValidateWorkFlowName():
+    print("WorkflowName:", WorkflowName)
+    if WorkflowName.strip().replace("\n", "") == "":
+        streamlit.toast("WorkFlow name cannot be empty...")
+    else:
         with open("WORKFLOW_" + WorkflowName + ".json", "w") as f:
             json.dump({"Tasks": streamlit.session_state.get("Tasks")}, f)
+
+
+with Optcol2:
+    if streamlit.button("Save Workflow", on_click=ValidateWorkFlowName):
+        streamlit.toast("WorkFlow saving...")
