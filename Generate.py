@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import pickle
 
 import streamlit
 import pyautogui
@@ -8,44 +9,60 @@ import pyautogui
 streamlit.title("Welcome to Low Code configurator")
 streamlit.header('Tasks', divider='rainbow')
 
-# TODO Remove Streamlit session state for task and create a pickle file for same :0
-
 
 def MoveMouse():
-    streamlit.session_state["Active"] = True
-    try:
-        prevCalled = streamlit.session_state.get("Called")
-        streamlit.session_state["Called"] = (prevCalled + 1)
-    except:
-        pass
-    streamlit.session_state.setdefault("Called", 1)
+    # Check if move mouse was called before for future processing TODO
+    streamlit.session_state["MoveMouse_Active"] = True
 
 
-def UpdateWorkflow(args):
+def MouseLeftClick():
+    streamlit.session_state["MouseLeftClick_Active"] = True
+
+
+def MouseRightClick():
+    streamlit.session_state["MouseRightClick_Active"] = True
+
+
+def UpdateWorkflow(task, args):
     with streamlit.status("Working on data...", expanded=True) as status:
         streamlit.write("Saving current task...")
         time.sleep(2)
-        task = {"Task": "move_mouse", "args": args}
+        task = {"Task": task, "args": args}
         try:
-            currentTaskList: list = streamlit.session_state.get("Tasks")
-            currentTaskList.append(task)
+            with open("RootCurrentTask.pickle", "rb") as pickleLoader:
+                LOADED = pickle.load(pickleLoader)
+                print(LOADED)
+                currentTaskList: list = LOADED.get("Tasks")
+                currentTaskList.append(task)
+                print("Dumping --->", currentTaskList)
+                with open("RootCurrentTask.pickle", "wb") as picklewriter:
+                    tempdictdump = {"Tasks": currentTaskList}
+                    pickle.dump(tempdictdump, picklewriter)
+
         except:
-            streamlit.session_state.setdefault("Tasks", []).append(task)
+            with open("RootCurrentTask.pickle", "wb") as pickleLoader:
+                inittask = {}
+                inittask.setdefault("Tasks", []).append(task)
+                print(inittask)
+                pickle.dump(inittask, pickleLoader)
         UpdateWorkflowDisplay()
         streamlit.write("Done..")
 
 
 with streamlit.container():
     def UpdateWorkflowDisplay():
-        if streamlit.session_state.get("Tasks"):
-            for stepNo, task in enumerate(streamlit.session_state.get("Tasks")):
-                with streamlit.container(border=True):
-                    streamlit.write("✒ " + str(stepNo) + "::  Task: ", task["Task"])
-                    streamlit.write(task)
+        with open("RootCurrentTask.pickle", "rb") as pickleLoader:
+            LOADED = pickle.load(pickleLoader)
+            print("Loaded and updated workflow", LOADED)
+            if LOADED.get("Tasks"):
+                for stepNo, task in enumerate(LOADED.get("Tasks")):
+                    with streamlit.container(border=True):
+                        streamlit.write("✒ " + str(stepNo) + "::  Task: ", task["Task"])
+                        streamlit.write(task)
 
-        else:
-            with streamlit.status("No workflow yet...", expanded=True) as status:
-                status.write("Workflow will be created automatically when you start a new task...")
+            else:
+                with streamlit.status("No workflow yet...", expanded=True) as status:
+                    status.write("Workflow will be created automatically when you start a new task...")
 
 TC1, TC2, TC3 = streamlit.columns(3)
 
@@ -57,17 +74,20 @@ WorkflowName = streamlit.text_input(label="Please give a unique name for your wo
 # Check if workflow already exists
 dirFiles = os.listdir()
 
-if "WORKFLOW_" + WorkflowName + ".json" in dirFiles:
+if streamlit.button("Check Workflow") and "WORKFLOW_" + WorkflowName + ".json" in dirFiles:
     with streamlit.status("Looks like a workflow with same name already exits.....") as loadingFile:
         loadingFile.write("Working on data....")
         with open("WORKFLOW_" + WorkflowName + ".json", "r") as f:
             workflowfromfile = json.load(f)
-            getTaskListFromFile = workflowfromfile.get("Tasks")
-            streamlit.session_state["Tasks"] = getTaskListFromFile
+            # getTaskListFromFile = workflowfromfile.get("Tasks")
+            with open("RootCurrentTask.pickle", "wb") as pickleLoader:
+                pickle.dump(workflowfromfile, pickleLoader)
+                print(workflowfromfile)
             streamlit.toast(f"Loaded Your {WorkflowName} data")
 
 with TC1:
-    if streamlit.button("Move Mouse", on_click=MoveMouse) or streamlit.session_state.get("Active"):
+    # Move Mouse....
+    if streamlit.button("Move Mouse", on_click=MoveMouse) or streamlit.session_state.get("MoveMouse_Active"):
         X = streamlit.number_input(label="Insert the X position", value=0, min_value=0,
                                    max_value=int(pyautogui.size().width))
         Y = streamlit.number_input(label="Insert the Y position", value=0, min_value=0,
@@ -75,8 +95,48 @@ with TC1:
         Duration = streamlit.number_input(label="Duration for movement", value=0.0, min_value=0.0)
         LogSS = streamlit.selectbox(label="Enable Screenshot log", options=[True, False])
         if streamlit.button("Save update", on_click=UpdateWorkflow,
-                            kwargs={"args": {"X": X, "Y": Y, "Duration": Duration, "LogSS": LogSS}}):
-            streamlit.session_state["Active"] = False
+                            kwargs={"args": {"X": X, "Y": Y, "Duration": Duration, "LogSS": LogSS},
+                                    "task": "move_mouse"}):
+            streamlit.session_state["MoveMouse_Active"] = False
+with TC2:
+    # Left Click
+    if streamlit.button("Mouse Left Click", on_click=MouseLeftClick) or streamlit.session_state.get(
+            "MouseLeftClick_Active"):
+        X = streamlit.number_input(label="Insert the X position", value=0, min_value=0,
+                                   max_value=int(pyautogui.size().width))
+        Y = streamlit.number_input(label="Insert the Y position", value=0, min_value=0,
+                                   max_value=int(pyautogui.size().height))
+        Clicks = streamlit.number_input(label="how many clicks to make, and defaults to 1", value=1, min_value=1)
+        Interval = streamlit.number_input(label="how many seconds to wait in between each click", value=0.0,
+                                          min_value=0.0)
+        Duration = streamlit.number_input(label="Duration for movement", value=0.0, min_value=0.0)
+        LogSS = streamlit.selectbox(label="Enable Screenshot log", options=[True, False])
+        if streamlit.button("Save update", on_click=UpdateWorkflow,
+                            kwargs={
+                                "args": {"X": X, "Y": Y, "Clicks": Clicks, "Interval": Interval, "Duration": Duration,
+                                         "LogSS": LogSS},
+                                "task": "left_click"}):
+            streamlit.session_state["MouseLeftClick_Active"] = False
+
+with TC3:
+    # Right Click
+    if streamlit.button("Mouse Right Click", on_click=MouseRightClick) or streamlit.session_state.get(
+            "MouseRightClick_Active"):
+        X = streamlit.number_input(label="Insert the X position", value=0, min_value=0,
+                                   max_value=int(pyautogui.size().width))
+        Y = streamlit.number_input(label="Insert the Y position", value=0, min_value=0,
+                                   max_value=int(pyautogui.size().height))
+        Clicks = streamlit.number_input(label="how many clicks to make, and defaults to 1", value=1, min_value=1)
+        Interval = streamlit.number_input(label="how many seconds to wait in between each click", value=0.0,
+                                          min_value=0.0)
+        Duration = streamlit.number_input(label="Duration for movement", value=0.0, min_value=0.0)
+        LogSS = streamlit.selectbox(label="Enable Screenshot log", options=[True, False])
+        if streamlit.button("Save update", on_click=UpdateWorkflow,
+                            kwargs={
+                                "args": {"X": X, "Y": Y, "Clicks": Clicks, "Interval": Interval, "Duration": Duration,
+                                         "LogSS": LogSS},
+                                "task": "right_click"}):
+            streamlit.session_state["MouseRightClick_Active"] = False
 
 Optcol1, Optcol2, Optcol3 = streamlit.columns(3)
 
@@ -91,9 +151,20 @@ def ValidateWorkFlowName():
         streamlit.toast("WorkFlow name cannot be empty...")
     else:
         with open("WORKFLOW_" + WorkflowName + ".json", "w") as f:
-            json.dump({"Tasks": streamlit.session_state.get("Tasks")}, f)
+            with open("RootCurrentTask.pickle", "rb") as pickleLoader:
+                LOADER = pickle.load(pickleLoader)
+                print(LOADER)
+            json.dump({"Tasks": LOADER.get("Tasks")}, f)
 
 
 with Optcol2:
     if streamlit.button("Save Workflow", on_click=ValidateWorkFlowName):
         streamlit.toast("WorkFlow saving...")
+
+streamlit.header('Workflow Status', divider='rainbow')
+
+try:
+    with open("RootCurrentTask.pickle", "rb") as pickleLoader:
+        streamlit.write(pickle.load(pickleLoader))
+except Exception as e:
+    print(e)
