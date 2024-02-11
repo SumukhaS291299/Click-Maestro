@@ -1,6 +1,8 @@
 import json
+import multiprocessing
 import os
 import re
+import threading
 import time
 import pickle
 
@@ -8,6 +10,8 @@ import streamlit
 import pyautogui
 
 import Scripter
+
+from streamlit.runtime.scriptrunner import add_script_run_ctx
 
 streamlit.title("Welcome to Low Code configurator")
 streamlit.header('Tasks', divider='rainbow')
@@ -87,10 +91,18 @@ WC1, WC2, WC3 = streamlit.columns(3)
 # Check if workflow already exists
 dirFiles = os.listdir()
 
+
+# def ShowMouseInfo():
+#     pyautogui.mouseInfo()
+#
+#
+# with WC1:
+#     if streamlit.button("Mouse Info"):
+#         mouseInfoThread = threading.Thread(target=ShowMouseInfo)
+#         add_script_run_ctx(mouseInfoThread)
+#         mouseInfoThread.start()
+
 with WC1:
-    if streamlit.button("Mouse Info"):
-        pyautogui.mouseInfo()
-with WC2:
     if streamlit.button("Run Workflow", on_click=initRunWorkflow) or streamlit.session_state.get(
             "initRunWorkflow_Active"):
         compiler = re.compile(r"WORKFLOW_(.*).json")
