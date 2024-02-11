@@ -1,13 +1,19 @@
 import json
 import os
+import re
 import time
 import pickle
 
 import streamlit
 import pyautogui
 
+import Scripter
+
 streamlit.title("Welcome to Low Code configurator")
 streamlit.header('Tasks', divider='rainbow')
+
+
+# TODO Parser code inside script and add web elements to run script
 
 
 def MoveMouse():
@@ -21,6 +27,14 @@ def MouseLeftClick():
 
 def MouseRightClick():
     streamlit.session_state["MouseRightClick_Active"] = True
+
+
+def RunWorkflow():
+    streamlit.session_state["RunWorkflow_Active"] = True
+
+
+def initRunWorkflow():
+    streamlit.session_state["initRunWorkflow_Active"] = True
 
 
 def UpdateWorkflow(task, args):
@@ -67,12 +81,42 @@ with streamlit.container():
 TC1, TC2, TC3 = streamlit.columns(3)
 
 streamlit.header('', divider='rainbow')
-streamlit.header('Options', divider='rainbow')
 
-WorkflowName = streamlit.text_input(label="Please give a unique name for your workflow", max_chars=20)
+WC1, WC2, WC3 = streamlit.columns(3)
 
 # Check if workflow already exists
 dirFiles = os.listdir()
+
+with WC1:
+    if streamlit.button("Mouse Info"):
+        pyautogui.mouseInfo()
+with WC2:
+    if streamlit.button("Run Workflow", on_click=initRunWorkflow) or streamlit.session_state.get(
+            "initRunWorkflow_Active"):
+        compiler = re.compile(r"WORKFLOW_(.*).json")
+        workflows_available = []
+        for dirs in dirFiles:
+            try:
+                find = compiler.match(dirs)
+                workflows_available.append(find.group(1))
+            except:
+                pass
+        WorkflowToRun = streamlit.selectbox("Select Workflow to run", workflows_available)
+        if streamlit.button("RUN", on_click=RunWorkflow) or streamlit.session_state.get("RunWorkflow_Active"):
+            print("Running.....")
+            streamlit.toast("Waiting 20s to do all pre-requisites")
+            time.sleep(20)
+            with open("WORKFLOW_" + WorkflowToRun + ".json") as SelectedWF:
+                dictForScript = json.load(SelectedWF)
+                print("Starting Workflow....")
+                print(dictForScript)
+                Scripter.RunScript.RunOnce(dictForScript)
+            streamlit.session_state["RunWorkflow_Active"] = False
+            streamlit.session_state["initRunWorkflow_Active"] = False
+
+streamlit.header('Options', divider='rainbow')
+
+WorkflowName = streamlit.text_input(label="Please give a unique name for your workflow", max_chars=20)
 
 if streamlit.button("Check Workflow") and "WORKFLOW_" + WorkflowName + ".json" in dirFiles:
     with streamlit.status("Looks like a workflow with same name already exits.....") as loadingFile:
