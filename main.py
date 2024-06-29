@@ -15,13 +15,25 @@ app.geometry("400x240")
 def button_function():
     print("button pressed")
 
+def RunWebServer(port):
+    if port:
+        RunWebpage = subprocess.run(f"streamlit run Generate.py --server.port {int(port)}", shell=True,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+        print(RunWebpage.stdout)
+        print(RunWebpage.stderr)
+    else:
+        RunWebpage = subprocess.run(f"streamlit run Generate.py --server.port 8080", shell=True,
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE)
+        print(RunWebpage.stdout)
+        print(RunWebpage.stderr)
+
 
 def RunWebConf(port):
-    RunWebpage = subprocess.run(f"streamlit run Generate.py --server.port {int(port)}", shell=True,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE)
-    print(RunWebpage.stdout)
-    print(RunWebpage.stderr)
+    print(f"Running webserver in port {port}")
+    webserverthread = threading.Thread(target=RunWebServer,args=(port,))
+    webserverthread.start()
 
 
 def MouseInfoThread():
